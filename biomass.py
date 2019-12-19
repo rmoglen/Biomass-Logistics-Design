@@ -9,10 +9,11 @@ random.seed(1)
 a=10
 b=3  #b<a
 biomass=5   #5 biomass available at each site in each period
-demand=26000   #13000 biomass demand, equally devided between T periods
-mileage=0.01			#conversion factor for distance traveled
-#mileage=10			#conversion factor for distance traveled
+demand=13000   #13000 biomass demand, equally devided between T periods
+demand=demand*0.5
+mileage=0.01			#0.01 conversion factor for distance traveled
 harvest=[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] # harvest availability limited
+capacity=1
 season=[1] * 8
 h=[0] * 44
 season=season+h
@@ -20,7 +21,7 @@ he=10            #unit inventory holding cost for biofuel
 h=4.90   #Holding costs for feedstock, from Table 2
 #beta=73.71 	#conversion rate of biomass type b, from Table 2
 beta=50 	#conversion rate of biomass type b, from Table 2
-graphing_1=True   #Network overview
+graphing_1=False   #Network overview
 graphing_storage=False    #Solutions
 graphing_biorefinery=False
 
@@ -74,8 +75,9 @@ psi_1=[23571207,28961559,34351911,45132615,50522967]		#Can CALCULTATE FROM SECTI
 #psi_2=[23571207,28961559,34351911,45132615,50522967]			#Not clear for collection facilities
 psi_2=[0,0,0,0,0] 			#no cost to open collection facilities
 C=[10, 20, 30, 50, 60]  #biorefinery production capacities allowed
+C=C*capacity
 S_1=[10, 20, 30, 50, 60]   #biorefinery storage capacities allowed
-S_2=[10, 20, 30, 50, 60]  #collection facility  storage capacities allowed
+S_2=[10, 20, 30, 50, demand]  #collection facility storage capacities allowed
 omega=44.30		 #unit cost of processing biomass
 
 c=[[calculateDist(x_coord[j],y_coord[j],x_coord[i],y_coord[i])*mileage for j in j_site] for i in i_site]
@@ -88,6 +90,9 @@ lambda_0=[[biomass*harvest[k]*season[t] for t in time] for k in k_site]
 
 #Define demand
 d=[demand/T for t in time]
+#d=[demand/T for t in (time[2:])]
+#d.insert(0,0)
+#d.insert(0,0)
 
 ################### Model ###################
 m = Model("biomass")
@@ -264,6 +269,8 @@ for i in i_site:
 for t in time:
 	m.addConstr(quicksum(y[i][K][t] for K in K_site for i in i_site)==d[t],
 			name="Demand[%d]" % (t))
+#m.addConstr(quicksum(y[i][K][t] for K in K_site for i in i_site)==demand,
+#			name="Demand" )
 
 #Constraint 11
 for i in i_site:
@@ -360,6 +367,8 @@ processing=0
 for t in time:
 	for i in i_site:
 		processing+=omega*w[i][t].x
+		if e[i][t].x>0:
+			print("processed:",t)
 
 print("Processing costs %f" % processing)
 
@@ -368,7 +377,6 @@ for t in time:
 	for K in K_site:
 		for i in i_site:
 			produced+=y[i][K][t].x
-
 
 print("Biofuel Produced %f" % produced)
 
@@ -380,15 +388,17 @@ print(processing)
 print(num_open)
 
 
-if graphing_biorefinery:
-	x_open=list()
-	y_open=list()
-	for i in i_site:
-		for l in l_capacity:
-			if x_1[i][l].x>0:
-				x_open.append(x_coord[i])
-				y_open.append(y_coord[i])
 
+x_open=list()
+y_open=list()
+for i in i_site:
+	for l in l_capacity:
+		if x_1[i][l].x>0:
+			print("capacity:", S_1[l])
+			x_open.append(x_coord[i])
+			y_open.append(y_coord[i])
+
+if graphing_biorefinery:
 	plt.scatter(x_coord, y_coord,  label="closed")
 	plt.scatter(x_open, y_open,  label="open")
 	plt.legend(loc="upper left")
